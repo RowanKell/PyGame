@@ -1,10 +1,21 @@
+import os.path
+
 import pygame
 import random
 import numpy as np
 from pygame.locals import (K_UP, K_DOWN, K_LEFT, K_RIGHT, K_ESCAPE, KEYDOWN, QUIT)
+import pygame.freetype
 
 pygame.init()
-score = 0
+
+field_top = 0
+
+font_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "fonts", "FuturaRenner-Regular.otf")
+font_size = 50
+pygame.freetype.init()
+myfont = pygame.freetype.Font(font_path, font_size)
+
+total_score = 0
 player_speed = 5
 player_resize = [40, 40]
 player_image = "Sprites/player.png"
@@ -17,6 +28,20 @@ for i in range(10):
 def pick_color():
     random_color = [random.randint(0, 255), random.randint(0, 255), random.randint(0, 255)]
     return random_color
+
+
+def round_down(num):
+    rounded = round(num)
+    if rounded > num:
+        rounded = rounded + 1
+    return rounded
+
+
+def round_up(num):
+    rounded = round(num)
+    if rounded < num:
+        rounded = rounded + 1
+    return rounded
 
 
 class Player(pygame.sprite.Sprite):
@@ -40,14 +65,13 @@ class Player(pygame.sprite.Sprite):
             self.rect.left = 0
         if self.rect.right > screen_width:
             self.rect.right = screen_width
-        if self.rect.top < 0:
-            self.rect.top = 0
+        if self.rect.top < round_up(field_top):
+            self.rect.top = round_up(field_top)
         if self.rect.bottom > screen_height:
             self.rect.bottom = screen_height
 
 
 class Enemy(pygame.sprite.Sprite):
-    dead = False
 
     def __init__(self):
         super(Enemy, self).__init__()
@@ -61,7 +85,7 @@ class Enemy(pygame.sprite.Sprite):
             # random starting position
             center=(
                 random.randint(screen_width + 10, screen_width + 20),
-                random.randint(0, screen_height),
+                random.randint(round_up(field_top + enemy_height / 2), round_down(screen_height - enemy_height / 2)),
             )
         )
         # random speed
@@ -71,6 +95,16 @@ class Enemy(pygame.sprite.Sprite):
         elif rand_pick >= 5:
             self.speed = 1 + 1 * rand_pick
         self.enemies_passed = 0
+        self.score = 0
+        self.scorelimit = 0
+
+    def score_count(self):
+        if self.rect.right < 1:
+            self.scorelimit += 1
+            if self.scorelimit == 1:
+                self.score = 1
+            else:
+                self.score = 0
 
     def update(self):
         # move enemy at its speed to the left
@@ -79,7 +113,6 @@ class Enemy(pygame.sprite.Sprite):
         if self.rect.right < 0:
             # kill() removes the sprite from every group its in
             self.kill()
-            self.dead = True
 
 
 class Cloud(pygame.sprite.Sprite):
@@ -100,6 +133,30 @@ class Cloud(pygame.sprite.Sprite):
         self.rect.move_ip(-self.speed, 0)
         if self.rect.right < 0:
             self.kill()
+
+
+def stats(score):
+    score_board_text = "Score: " + str(score)
+    score_board_size = 64
+    myfont_rect = myfont.get_rect(score_board_text, size=score_board_size)
+    text_width = myfont_rect.right - myfont_rect.left
+    text_height = myfont_rect.bottom - myfont_rect.top
+    score_board = pygame.Surface((text_width + 60, text_height + 40))
+    score_board_center = ((screen_width / 2), 40 + text_height / 2)
+    score_board_rect = score_board.get_rect(
+        center=score_board_center
+    )
+    score_board_border = pygame.Surface((text_width + 80, text_height + 60))
+    score_board_border_rect = score_board_border.get_rect(
+        center=score_board_center
+    )
+    global field_top
+    field_top = score_board_border_rect.bottom
+    pygame.draw.rect(screen, (0, 0, 50), score_board_border_rect)
+    pygame.draw.rect(screen, (50, 50, 200), score_board_rect)
+
+    myfont.render_to(screen, (score_board_center[0] - text_width / 2, score_board_center[1] - text_height / 2),
+                     score_board_text, (255, 255, 255), None, size=score_board_size)
 
 
 # display screen
@@ -126,6 +183,7 @@ clouds = pygame.sprite.Group()
 all_sprites = pygame.sprite.Group()
 all_sprites.add(player)
 
+enemylist = []
 # Setup clock to control framerate
 clock = pygame.time.Clock()
 
@@ -147,12 +205,16 @@ while running:
             new_enemy = Enemy()
             enemies.add(new_enemy)
             all_sprites.add(new_enemy)
+            enemylist.append(new_enemy)
         elif event.type == ADDCLOUD:
             new_cloud = Cloud()
             clouds.add(new_cloud)
             all_sprites.add(new_cloud)
 
     immune = False
+    for enemy in enemylist:
+        enemy.score_count()
+        total_score += enemy.score
     pressed_key = pygame.key.get_pressed()
     player.update(pressed_key)
     enemies.update()
@@ -171,12 +233,8 @@ while running:
         if not pygame.sprite.spritecollideany(player, clouds):
             player.kill()
             running = False
+    stats(total_score)
     # flip everything to display
     pygame.display.flip()
     clock.tick(60)
-    print(score)
-
-for enemy in enemies:
-    if enemy.alive != True:
-        score += 1
 pygame.quit()
