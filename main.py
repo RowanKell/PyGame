@@ -5,10 +5,10 @@ from pygame.locals import (K_UP, K_DOWN, K_LEFT, K_RIGHT, K_ESCAPE, KEYDOWN, QUI
 pygame.init()
 
 player_speed = 5
-player_resize = [40,40]
+player_resize = [40, 40]
 player_image = "Sprites/player.png"
 cloud_image = "Sprites/cloud.png"
-enemy_images = np.array(["","","","","","","","","","",""], dtype=object)
+enemy_images = np.array(["", "", "", "", "", "", "", "", "", "", ""], dtype=object)
 for i in range(10):
     enemy_images[i] = "Sprites/enemy" + str(i) + ".png"
 def PickColor():
@@ -89,8 +89,8 @@ class Cloud(pygame.sprite.Sprite):
         if self.rect.right < 0:
             self.kill()
 #display screen
-screen_width = 1200
-screen_height = 900
+screen_width = 800
+screen_height = 600
 screen = pygame.display.set_mode((screen_width,screen_height))
 
 # Custom event for adding new enemies
@@ -116,7 +116,7 @@ all_sprites.add(player)
 clock = pygame.time.Clock()
 
 #Run game unless user stops
-running = True; 
+running = True
 while running:
     for event in pygame.event.get():
         #is the user pressing a key
